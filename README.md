@@ -1,47 +1,102 @@
 # VoteBuddy AI 🗳️
 
-VoteBuddy AI is a friendly, highly reliable, and intelligent step-by-step election guide designed to help users understand elections and the voting process.
+**VoteBuddy AI** is a smart, multilingual election assistant that helps users understand voting processes, registration, and election-related queries in a simple, accurate, and accessible way.
 
-## Problem and Solution
-Many first-time voters find the voting process intimidating, and existing information is often scattered or overly complex. LLMs are helpful, but they often hallucinate legal or statistical facts about elections. 
-**Solution:** VoteBuddy AI uses a hybrid deterministic + AI architecture. We apply deterministic intent and user-level routing *before* hitting the AI, and strict anti-hallucination post-processing *after* hitting the AI. It guides users step-by-step, adapting its tone from Beginner to Advanced.
+---
 
-## Architecture
+## 🚀 Features
 
-- **Frontend:** Vanilla HTML/CSS/JS with a modern Glassmorphism UI to ensure extreme lightweight performance.
-- **Backend:** Node.js / Express handling the API layer.
-- **Logic Layer:** Deterministic Intent & User Level Classifier (GUIDED, LEARNING, PROBLEM, GENERAL).
-- **AI Engine:** Google Vertex AI (Gemini 2.5 Flash) with strict System Instructions for safe generation.
-- **Database:** Google Cloud Firestore for tracking session history and user intent efficiently.
-- **Deployment:** Google Cloud Run (Dockerized).
+* 🧠 **AI-Powered Election Guidance**
+  Clear and reliable explanations about voting, eligibility, and election procedures.
 
-## Features
-- **Anti-Hallucination Strategy:** Deterministic fallback if the AI attempts to guess or hallucinate statistics. Low temperature setting on Gemini.
-- **User Level Adaptation:** Automatically detects if a user is a BEGINNER or ADVANCED based on keyword heuristics.
-- **Stateful Memory:** Uses Firestore to keep track of previous conversational turns and the user's intent.
-- **Rate Limiting:** Built-in memory rate limiter to prevent abuse.
-- **Security:** Input validation and Prompt Injection protection.
+* 🌐 **Multilingual Support**
+  Supports multiple languages including:
 
-## Setup Steps
-1. Clone the repository and run `npm install`.
-2. Copy `.env.example` to `.env` and fill in `GEMINI_API_KEY`.
-3. Start the server: `npm start`.
-4. Open `http://localhost:8080` in your browser.
+  * English (high accuracy)
+  * Hindi (high accuracy)
+  * Telugu
+  * Tamil
+  * Kannada
+  * Malayalam
+    *(and more supported dynamically)*
 
-## Testing
-Run the lightweight native node test suite:
-\`\`\`bash
-npm test
-\`\`\`
+* 🎤 **Voice Input (Mic Support)**
+  Speak your queries — the AI detects language and responds accordingly.
 
-## Deployment to Google Cloud Run
-1. Authenticate with Google Cloud: `gcloud auth login`
-2. Set your project: `gcloud config set project [YOUR-PROJECT-ID]`
-3. Submit build and deploy:
-   \`\`\`bash
-   gcloud run deploy votebuddy-ai \
-     --source . \
-     --region us-central1 \
-     --allow-unauthenticated \
-     --set-env-vars GEMINI_API_KEY=[YOUR_KEY]
-   \`\`\`
+* 📱 **Mobile Compatible UI**
+  Fully responsive design optimized for phones and tablets with smooth touch interactions.
+
+* 💬 **Context-Aware Conversations**
+  Understands previous messages and responds intelligently based on context.
+
+* 🔁 **Retry System**
+  Users can retry any message if they are not satisfied with the response.
+
+* ⚡ **Smart Quick Actions**
+  Context-based suggestions for faster navigation and better user experience.
+
+---
+
+## 🔒 Security & Safety
+
+* XSS Protection (frontend + backend)
+* Input sanitization and validation
+* Prompt injection protection
+* Safe AI responses (no harmful or misleading content)
+* Anti-hallucination rules for better accuracy
+
+---
+
+## ♿ Accessibility
+
+* Keyboard navigation support
+* Screen reader friendly (ARIA labels)
+* Clear focus states and interaction feedback
+
+---
+
+## ⚡ Performance
+
+* Optimized rendering for smooth experience
+* Chat history limits for stability
+* Frontend rate limiting to prevent spam
+
+---
+
+## 🧠 AI Behavior
+
+* Responds in the **same language as the user**
+* Provides **highly accurate responses in English and Hindi**
+* Supports multiple Indian languages effectively
+* Avoids guessing uncertain information and suggests official verification when needed
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend:** HTML, CSS, JavaScript
+* **Backend:** Node.js, Express
+* **AI:** Google Gemini API
+* **Storage:** Local storage (chat history)
+
+---
+
+## 💡 Purpose
+
+To make election-related information:
+
+* Simple
+* Accessible
+* Multilingual
+* Safe and trustworthy
+
+for every citizen.
+
+---
+
+## ⚠️ Disclaimer
+
+This application provides general guidance based on commonly accepted election processes.
+For official and latest updates, please refer to authorized election commission sources.
+
+---
