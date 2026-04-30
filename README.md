@@ -81,6 +81,13 @@
 
 ---
 
+## 🧪 Testing
+
+The application has been tested across functionality, security, performance, and responsiveness.  
+Detailed testing strategy is available in `TESTING.md`.
+
+---
+
 ## 💡 Purpose
 
 To make election-related information:
