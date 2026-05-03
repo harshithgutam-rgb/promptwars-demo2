@@ -20,8 +20,9 @@
   * Malayalam
     *(and more supported dynamically)*
 
-* 🎤 **Voice Input (Mic Support)**
-  Speak your queries — the AI detects language and responds accordingly.
+
+* 🎤 **Voice Interaction**
+  Speech-to-text input and text-to-speech output.Speak your queries — the AI detects language and responds accordingly.You can also listen to AI replies.
 
 * 📱 **Mobile Compatible UI**
   Fully responsive design optimized for phones and tablets with smooth touch interactions.
@@ -37,6 +38,24 @@
 
 ---
 
+## 🔊 Voice & Language Support
+* ✅ Most accurate support: English and Hindi
+* 🌍 Other languages supported: Telugu, Tamil, Kannada, Malayalam, etc.
+* ⚠️ Note: Regional language voice output may vary in pronunciation due to current browser and API limitations
+
+The system is designed to scale voice capabilinowties further using enhanced APIs and datasets for improved multilingual speech quality.
+
+---
+
+## ☁️ Google Services Used
+* Google Gemini API → Intelligent response generation
+* Google Translate API → Multilingual support
+* Google Cloud Text-to-Speech (Hybrid) → Voice output
+
+The system is designed with a hybrid Text-to-Speech architecture, where Google Cloud TTS is integrated for scalable voice output, and a browser-based fallback ensures uninterrupted audio playback across devices and API conditions.
+
+---
+
 ## 🔒 Security & Safety
 
 * XSS Protection (frontend + backend)
@@ -44,6 +63,8 @@
 * Prompt injection protection
 * Safe AI responses (no harmful or misleading content)
 * Anti-hallucination rules for better accuracy
+* Graceful fallback for API failures
+* Robust error handling (frontend + backend)
 
 ---
 
@@ -81,10 +102,25 @@
 
 ---
 
+## 🎯 Problem Statement Alignment
+
+VoteBuddy AI helps users:
+
+* Understand voter eligibility
+* Learn how to apply for voter ID
+* Get election-related information in simple language
+* Access information in their preferred language
+
+---
+
 ## 🧪 Testing
 
 The application has been tested across functionality, security, performance, and responsiveness.  
 Detailed testing strategy is available in `TESTING.md`.
+* No crash handling for API failures
+* Safe JSON parsing
+* Mobile and desktop tested
+* Consistent UI behavior
 
 ---
 
@@ -105,5 +141,11 @@ for every citizen.
 
 This application provides general guidance based on commonly accepted election processes.
 For official and latest updates, please refer to authorized election commission sources.
+
+---
+
+## 📌 Conclusion
+
+VoteBuddy AI is designed as a scalable, accessible, and reliable AI assistant, focusing on real-world usability and clean engineering practices.
 
 ---
