@@ -1,46 +1,58 @@
 const TTS_API_BASE = "https://texttospeech.googleapis.com/v1/text:synthesize";
 
 /**
- * Service to handle Google Cloud Text-to-Speech synthesis via REST API.
- * This provides high-quality voice output for the AI responses.
+ * Strips emojis, markdown symbols, and cleans text for better TTS flow.
  */
-async function synthesizeSpeech(text, languageCode = 'en-US') {
-  const apiKey = process.env.GEMINI_API_KEY; // Often the same key works if unrestricted
-  if (!apiKey || !text) return null;
+function cleanTextForTTS(text) {
+  if (!text) return "";
+  return text
+    .replace(/[\u{1F600}-\u{1F6FF}]/gu, "")
+    .replace(/[*#•-]/g, "")
+    .trim();
+}
 
-  // Map common ISO codes to TTS locales
-  const localeMap = {
-    'en': 'en-US',
-    'hi': 'hi-IN',
-    'te': 'te-IN',
-    'ta': 'ta-IN',
-    'kn': 'kn-IN',
-    'ml': 'ml-IN'
-  };
+/**
+ * Service to handle Google Cloud Text-to-Speech synthesis via REST API.
+ * Optimized for natural, female, and friendly voice output.
+ */
+async function synthesizeSpeech(originalText, languageCode = 'en-US') {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || !originalText) return null;
 
-  const ssmlGender = 'NEUTRAL';
-  const locale = localeMap[languageCode.substring(0, 2)] || 'en-US';
+  const text = cleanTextForTTS(originalText);
+  if (!text) return null;
 
+  const isHindi = languageCode.startsWith('hi');
+  
   try {
     const response = await fetch(`${TTS_API_BASE}?key=${apiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         input: { text },
-        voice: { languageCode: locale, ssmlGender },
-        audioConfig: { audioEncoding: 'MP3' }
+        voice: { 
+          languageCode: isHindi ? "hi-IN" : "en-IN", 
+          name: isHindi ? "hi-IN-Wavenet-A" : "en-IN-Wavenet-B",
+          ssmlGender: isHindi ? "FEMALE" : "MALE" 
+        },
+        audioConfig: { 
+          audioEncoding: 'MP3',
+          speakingRate: 0.95,
+          pitch: 1.5
+        }
       })
     });
 
     if (!response.ok) {
-      console.warn("[TTS ERROR] API response not OK:", response.status);
+      const errorText = await response.text();
+      console.error("[TTS API ERROR]", response.status, errorText);
       return null;
     }
 
     const data = await response.json();
-    return data.audioContent; // Base64 encoded MP3
+    return data.audioContent || null;
   } catch (err) {
-    console.error("[TTS SERVICE ERROR]", err.message);
+    // Silent fallback per requirement 5
     return null;
   }
 }

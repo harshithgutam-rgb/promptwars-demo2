@@ -8,7 +8,6 @@ const {
   detectHarmfulContent,
   detectOutOfScope,
   sanitizeInput,
-  detectLanguage,
   detectCurrentInfo
 } = require('./services/logic');
 
@@ -16,6 +15,8 @@ const {
 
 const { getSession, updateSession } = require('./services/db');
 const { generateResponse } = require('./services/ai');
+const { detectLanguage: detectLangCode, translateText } = require('./services/translate');
+const { synthesizeSpeech } = require('./services/tts');
 const { logInteraction, logSafetyEvent } = require('./utils/logger');
 
 const app = express();
@@ -88,7 +89,6 @@ app.post('/api/chat', rateLimiter, async (req, res) => {
 
     const safeSessionId = sessionId ? String(sessionId).substring(0, 50) : 'default-session';
 
-    console.log("Incoming message:", cleanMessage);
     console.log(`[INCOMING] Session: ${safeSessionId} | Message: "${cleanMessage.substring(0, 80)}"`);
 
     // ===== PROMPT INJECTION PROTECTION =====
@@ -108,7 +108,7 @@ app.post('/api/chat', rateLimiter, async (req, res) => {
     }
 
     // ===== LANGUAGE DETECTION =====
-    const detectedLanguage = detectLanguage(cleanMessage);
+    // Using unified async detection in the translation layer below
 
     // ===== LOGIC LAYER =====
     const intent = detectIntent(cleanMessage);
@@ -124,7 +124,6 @@ app.post('/api/chat', rateLimiter, async (req, res) => {
     // ===== LOG INTERACTION =====
     logInteraction({
       input: cleanMessage,
-      detectedLanguage,
       intent,
       safetyFlags: {
         injection: false,
@@ -152,34 +151,80 @@ app.post('/api/chat', rateLimiter, async (req, res) => {
       console.error("[DB FETCH ERROR]", dbErr.message);
     }
 
+    // ===== TRANSLATION LAYER (INCOMING) =====
+    let userLang = 'en';
+    let messageForAI = cleanMessage;
+    try {
+      // Optimization: Skip Gemini language detection if text is clearly basic English ASCII
+      if (!/^[A-Za-z0-9\s.,!?'"()@#$%^&*-]+$/.test(cleanMessage)) {
+        userLang = await detectLangCode(cleanMessage);
+      }
+      
+      if (userLang !== 'en') {
+        console.log(`[TRANSLATE] Translating from ${userLang} to en...`);
+        messageForAI = await translateText(cleanMessage, 'en');
+      }
+    } catch (langErr) {
+      console.warn("[TRANSLATE ERROR - FALLBACK TO EN]", langErr.message);
+    }
+
     // ===== AI GENERATION =====
     let aiResponse = "";
     try {
       const historyToPass = history && Array.isArray(history) ? history : session.messages;
-      aiResponse = await generateResponse(cleanMessage, historyToPass, userLevel, intent, isCurrentInfo);
-      
+      aiResponse = await generateResponse(messageForAI, historyToPass, userLevel, intent, isCurrentInfo);
+
       // Clean AI response of scripts
       if (aiResponse) {
         aiResponse = aiResponse.replace(/<script.*?>.*?<\/script>/gi, "");
       }
+
+      // ===== TRANSLATION LAYER (OUTGOING) =====
+      try {
+        if (userLang !== 'en' && aiResponse) {
+          console.log(`[TRANSLATE] Translating from en back to ${userLang}...`);
+          aiResponse = await translateText(aiResponse, userLang);
+        }
+      } catch (outTransErr) {
+        console.warn("[OUTGOING TRANSLATE ERROR]", outTransErr.message);
+      }
+
+      // ===== GOOGLE TEXT-TO-SPEECH (OPTIONAL AUDIO) =====
+      let audioContent = null;
+      try {
+        if (aiResponse) {
+          if (userLang === 'en' || userLang === 'hi') {
+             audioContent = await synthesizeSpeech(aiResponse, userLang);
+          } else {
+             // No fallback speech for other languages
+             console.log(`[TTS] Skipped audio generation for unsupported language: ${userLang}`);
+          }
+        }
+      } catch (ttsErr) {
+        console.warn("[TTS PIPELINE ERROR]", ttsErr.message);
+      }
+
+      // ===== SAVE SESSION =====
+      try {
+        if (aiResponse) {
+          await updateSession(safeSessionId, cleanMessage, aiResponse, intent, userLevel);
+        }
+      } catch (dbWriteErr) {
+        console.error("[DB WRITE ERROR]", dbWriteErr.message);
+      }
+
+      return res.status(200).json({ 
+        reply: aiResponse || "I'm having a bit of trouble thinking. Try again in a second? 👍",
+        audio: audioContent 
+      });
+
     } catch (aiErr) {
       console.error("AI ERROR:", aiErr.message);
-      aiResponse = "I'm having trouble connecting right now. Try again 👍";
+      return res.status(200).json({ reply: "I'm having trouble connecting right now. Try again 👍" });
     }
-
-    // ===== SAVE SESSION =====
-    try {
-      if (aiResponse) {
-        await updateSession(safeSessionId, cleanMessage, aiResponse, intent, userLevel);
-      }
-    } catch (dbWriteErr) {
-      console.error("[DB WRITE ERROR]", dbWriteErr.message);
-    }
-
-    return res.status(200).json({ reply: aiResponse || "I'm having a bit of trouble thinking. Try again in a second? 👍" });
 
   } catch (criticalErr) {
-    console.error("[CRITICAL ERROR]", criticalErr.message);
+    console.error("[CRITICAL ERROR]", criticalErr); // Log full stack trace
     return res.status(200).json({ reply: "Something went wrong on my side. Try again? 👍" });
   }
 });

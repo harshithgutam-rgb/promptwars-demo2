@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>VoteBuddy AI | Your Friendly Election Guide</title>
-  <meta name="description" content="A reliable assistant helping you understand elections and the voting process with clean AI guidance.">
+  <meta name="description"
+    content="A reliable assistant helping you understand elections and the voting process with clean AI guidance.">
   <link rel="stylesheet" href="css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
   <!-- Overlay for mobile sidebar -->
   <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -40,26 +43,43 @@
         </div>
       </header>
 
-      <main class="chat-container" id="chat-container">
+      <main class="chat-container" id="chat-container" role="main" aria-live="polite">
         <!-- Messages will be injected here -->
       </main>
 
       <div class="bottom-area">
         <div class="quick-actions" id="quick-actions">
-          <button class="pill-btn" aria-label="Quick action: I am a first time voter. How do I start?" onclick="sendQuickAction('I am a first time voter. How do I start?')">First Time Voter</button>
-          <button class="pill-btn" aria-label="Quick action: How does voting actually work?" onclick="sendQuickAction('How does voting actually work?')">How Voting Works</button>
-          <button class="pill-btn" aria-label="Quick action: I lost my Voter ID. What do I do?" onclick="sendQuickAction('I lost my Voter ID. What do I do?')">I Lost My ID</button>
+          <button class="pill-btn" aria-label="Quick action: I am a first time voter. How do I start?"
+            onclick="sendQuickAction('I am a first time voter. How do I start?')">First Time Voter</button>
+          <button class="pill-btn" aria-label="Quick action: How does voting actually work?"
+            onclick="sendQuickAction('How does voting actually work?')">How Voting Works</button>
+          <button class="pill-btn" aria-label="Quick action: I lost my Voter ID. What do I do?"
+            onclick="sendQuickAction('I lost my Voter ID. What do I do?')">I Lost My ID</button>
         </div>
 
         <footer class="input-area">
-          <div class="mic-status" style="font-size:12px; color:rgba(255,255,255,0.7); text-align:center; min-height:16px; margin-bottom:4px;"></div>
+          <div class="mic-status"
+            style="font-size:12px; color:rgba(255,255,255,0.7); text-align:center; min-height:16px; margin-bottom:4px;">
+          </div>
           <div class="input-glass-wrapper">
             <button id="mic-btn" class="dock-icon-btn" aria-label="Start voice input" title="Voice Input" tabindex="0">
-              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="8" y1="23" x2="16" y2="23"></line>
+              </svg>
             </button>
-            <input type="text" id="input" placeholder="Ask VoteBuddy..." autocomplete="off" aria-label="Type your message to VoteBuddy" tabindex="0">
+
+            <input type="text" id="input" placeholder="Ask VoteBuddy..." autocomplete="off"
+              aria-label="Type your message to VoteBuddy" tabindex="0">
             <button id="sendBtn" class="dock-send-btn" aria-label="Send message" tabindex="0">
-              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
             </button>
           </div>
         </footer>
@@ -69,4 +89,5 @@
 
   <script src="js/app.js"></script>
 </body>
+
 </html>

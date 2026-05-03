@@ -1,61 +1,33 @@
-const TRANSLATE_API_BASE = "https://translation.googleapis.com/language/translate/v2";
+const { generateResponse } = require('./ai');
 
 /**
- * Service to handle Google Cloud Translation and Language Detection.
- * Using the official Cloud Translation REST API for maximum accuracy and 
- * to demonstrate deep integration with Google Cloud services.
+ * Service to handle language detection and translation using Gemini.
+ * This is more reliable than the Cloud Translation API as it uses the same 
+ * API key and handles context better.
  */
 
 async function detectLanguage(text) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || !text) return "en";
-
+  if (!text || text.length < 3) return "en";
   try {
-    const response = await fetch(`${TRANSLATE_API_BASE}/detect?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: text })
-    });
-
-    if (!response.ok) {
-      console.warn("[TRANSLATE] Detection fallback to 'en'");
-      return "en";
-    }
-
-    const data = await response.json();
-    return data.data.detections[0][0].language || "en";
+    const prompt = `Identify the ISO 639-1 language code (e.g., 'en', 'hi', 'te') of the following text. Return ONLY the code:\n\n"${text}"`;
+    const response = await generateResponse(prompt, [], "BEGINNER", "GENERAL");
+    const code = response.trim().toLowerCase().substring(0, 2);
+    return ['en', 'hi', 'te', 'ta', 'kn', 'ml', 'bn'].includes(code) ? code : 'en';
   } catch (err) {
-    console.error("[TRANSLATE DETECTION ERROR]", err.message);
+    console.error("[GEMINI TRANSLATE] Detection error:", err.message);
     return "en";
   }
 }
 
 async function translateText(text, targetLang) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || !text) return text;
+  if (!text || targetLang === 'en' && /^[A-Za-z0-9\s.,!?'"()-]+$/.test(text)) return text;
   
-  // Skip translation if it's already English and we're targeting English
-  if (targetLang === 'en' && /^[A-Za-z0-9\s.,!?'"()-]+$/.test(text)) return text;
-
   try {
-    const response = await fetch(`${TRANSLATE_API_BASE}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        q: text,
-        target: targetLang
-      })
-    });
-
-    if (!response.ok) {
-      console.warn("[TRANSLATE] Translation fallback to original text");
-      return text;
-    }
-
-    const data = await response.json();
-    return data.data.translations[0].translatedText || text;
+    const prompt = `Translate the following text into the language with code '${targetLang}'. Return ONLY the translated text, no explanation:\n\n"${text}"`;
+    const response = await generateResponse(prompt, [], "BEGINNER", "GENERAL");
+    return response.trim() || text;
   } catch (err) {
-    console.error("[TRANSLATE ERROR]", err.message);
+    console.error("[GEMINI TRANSLATE] Translation error:", err.message);
     return text;
   }
 }

@@ -13,7 +13,7 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function generateResponse(message, conversationHistory, userLevel, intent, isCurrentInfo = false) {
   let attempts = 0;
   const maxAttempts = 2; // Original + 1 Retry
-  
+
   while (attempts < maxAttempts) {
     attempts++;
     try {
@@ -25,7 +25,7 @@ async function generateResponse(message, conversationHistory, userLevel, intent,
     } catch (error) {
       const reason = error.name === 'AbortError' ? 'TIMEOUT' : (error.message || 'UNKNOWN');
       console.error(`[AI ATTEMPT ${attempts} FAILED] Reason: ${reason}`);
-      
+
       if (attempts < maxAttempts) {
         console.log(`[RETRY] Waiting 500ms before retry...`);
         await delay(500);
@@ -80,19 +80,28 @@ DO NOT hallucinate.`;
   clearTimeout(timeoutId);
 
   if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    if (data.error && data.error.message) {
-      throw new Error(`API_ERROR: ${data.error.message}`);
+    let errorData = {};
+    try {
+      errorData = await response.json();
+    } catch (e) {
+      // Ignored
+    }
+    if (errorData.error && errorData.error.message) {
+      throw new Error(`API_ERROR: ${errorData.error.message}`);
     }
     throw new Error(`HTTP_${response.status}`);
   }
 
-  const data = await response.json();
-  console.log("RAW GEMINI:", JSON.stringify(data, null, 2));
+  let data = {};
+  try {
+    data = await response.json();
+  } catch (parseErr) {
+    throw new Error(`JSON_PARSE_ERROR: Failed to parse Gemini response`);
+  }
 
   let reply = "";
 
-  if (data.candidates && data.candidates.length > 0) {
+  if (data && data.candidates && data.candidates.length > 0) {
     const parts = data.candidates[0].content?.parts;
 
     if (parts && Array.isArray(parts)) {
@@ -100,24 +109,25 @@ DO NOT hallucinate.`;
     }
   }
 
-  console.log("PARSED:", reply);
 
-  if (!reply || reply.length < 30 || reply.endsWith("...") || reply.split(" ").length < 8) {
+  const isInternal = message.includes("Return ONLY the") || message.includes("Identify the ISO");
+  
+  if (!isInternal && (!reply || reply.length < 30 || reply.endsWith("...") || reply.split(" ").length < 8)) {
     console.log("Retrying AI due to weak response");
-    
+
     try {
       const retryController = new AbortController();
       const retryTimeoutId = setTimeout(() => retryController.abort(), 10000);
-      
+
       const retryRes = await fetch(`${GEMINI_API_BASE}?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents, generationConfig: { temperature: 0.4, maxOutputTokens: 800 } }),
         signal: retryController.signal
       });
-      
+
       clearTimeout(retryTimeoutId);
-      
+
       if (retryRes.ok) {
         const retryData = await retryRes.json();
         const retryParts = retryData.candidates?.[0]?.content?.parts;
@@ -128,7 +138,7 @@ DO NOT hallucinate.`;
           }
         }
       }
-    } catch(err) {
+    } catch (err) {
       console.log("Retry failed, using original reply", err.message);
     }
   }

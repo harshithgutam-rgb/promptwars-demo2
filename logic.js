@@ -33,7 +33,14 @@ function detectPromptInjection(message) {
     /\bjailbreak\b/i,
     /\bdan mode\b/i,
     /\bdeveloper mode\b/i,
-    /\bsudo mode\b/i
+    /\bsudo mode\b/i,
+    /\broleplay as\b/i,
+    /\bpretend to be\b/i,
+    /\bignore all rules\b/i,
+    /\byou are now\b/i,
+    /\bforget everything\b/i,
+    /\bsimulate a\b/i,
+    /\bnew instructions\b/i
   ];
   return suspiciousPatterns.some(pattern => pattern.test(lowerMsg));
 }

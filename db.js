@@ -1,40 +1,29 @@
-const { Firestore } = require('@google-cloud/firestore');
-
-// Initialize Firestore. Will automatically use default credentials or service account in GCP.
-let db;
-try {
-  db = new Firestore();
-} catch (e) {
-  console.warn("Firestore initialization skipped. Run in GCP or set GOOGLE_APPLICATION_CREDENTIALS for local run.");
-}
+// In-memory session store (Replacing Firestore)
+const sessions = new Map();
 
 // Store last 10 message pairs (20 entries) for conversation memory
 const MAX_MESSAGES = 10;
 
+/**
+ * Retrieves a session from memory.
+ * @param {string} sessionId 
+ */
 async function getSession(sessionId) {
-  if (!db) return { messages: [], lastIntent: 'GENERAL', userLevel: 'INTERMEDIATE' };
-  try {
-    const doc = await db.collection('sessions').doc(sessionId).get();
-    if (!doc.exists) {
-      return { messages: [], lastIntent: 'GENERAL', userLevel: 'INTERMEDIATE' };
-    }
-    const data = doc.data();
-    // Migration: support old "history" field name
-    if (data.history && !data.messages) {
-      data.messages = data.history.map(h => ({
-        role: h.role === 'model' ? 'assistant' : h.role,
-        text: h.content || h.text
-      }));
-    }
-    return { ...data, messages: data.messages || [] };
-  } catch (error) {
-    console.error("[DB READ ERROR]", error.message);
+  if (!sessions.has(sessionId)) {
     return { messages: [], lastIntent: 'GENERAL', userLevel: 'INTERMEDIATE' };
   }
+  return sessions.get(sessionId);
 }
 
+/**
+ * Updates a session in memory.
+ * @param {string} sessionId 
+ * @param {string} userMessage 
+ * @param {string} aiMessage 
+ * @param {string} intent 
+ * @param {string} userLevel 
+ */
 async function updateSession(sessionId, userMessage, aiMessage, intent, userLevel) {
-  if (!db) return;
   try {
     const session = await getSession(sessionId);
     let messages = session.messages || [];
@@ -48,15 +37,15 @@ async function updateSession(sessionId, userMessage, aiMessage, intent, userLeve
       messages = messages.slice(messages.length - (MAX_MESSAGES * 2));
     }
 
-    // Single efficient write
-    await db.collection('sessions').doc(sessionId).set({
+    // Save back to memory map
+    sessions.set(sessionId, {
       messages,
       lastIntent: intent,
       userLevel,
-      updatedAt: Firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+      updatedAt: new Date()
+    });
   } catch (error) {
-    console.error("[DB WRITE ERROR]", error.message);
+    console.error("[IN-MEMORY DB WRITE ERROR]", error.message);
   }
 }
 

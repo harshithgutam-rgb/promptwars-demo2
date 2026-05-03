@@ -9,9 +9,91 @@ let editIndex = null;
 let lastUserMessage = "";
 let isRetrying = false;
 let lastSent = 0;
+let currentAudio = null;
 
+function handlePlay(audioUrl, fallbackText = null) {
+  try {
+    console.log("Play button clicked");
 
-// Unused functions removed
+    // Stop previous audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+    
+    // Stop any ongoing browser speech synthesis
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    if (audioUrl) {
+      // Create new audio
+      const audio = new Audio(audioUrl);
+      currentAudio = audio;
+
+      // Play audio
+      audio.play().then(() => {
+        console.log("Audio started");
+      }).catch(() => {
+        console.log("Audio play failed");
+      });
+
+      // Reset after finish
+      audio.onended = () => {
+        currentAudio = null;
+        console.log("Audio stopped");
+      };
+    } else if (fallbackText && 'speechSynthesis' in window) {
+      console.log("Using browser SpeechSynthesis fallback");
+      const utterance = new SpeechSynthesisUtterance(fallbackText);
+      
+      // Clean text for better TTS flow
+      utterance.text = fallbackText.replace(/[\u{1F600}-\u{1F6FF}]/gu, "").replace(/[*#•-]/g, "").trim();
+      
+      // Adjust pitch and rate to make it sound more natural and less robotic
+      utterance.pitch = 1.05; 
+      utterance.rate = 0.95; 
+
+      const voices = window.speechSynthesis.getVoices();
+      let selectedVoice = null;
+
+      // Detect Hindi vs English roughly
+      if (/[\u0900-\u097F]/.test(fallbackText)) {
+        utterance.lang = "hi-IN";
+        selectedVoice = voices.find(v => v.lang.includes("hi") && (v.name.includes("Google") || v.name.includes("Natural")));
+        if (!selectedVoice) selectedVoice = voices.find(v => v.lang.includes("hi"));
+      } else {
+        utterance.lang = "en-US";
+        // Look for the most natural English voices available on the user's OS/Browser
+        const enVoices = voices.filter(v => v.lang.startsWith("en"));
+        selectedVoice = enVoices.find(v => 
+          v.name.includes("Google") || 
+          v.name.includes("Natural") || 
+          v.name.includes("Premium") || 
+          v.name.includes("Siri") || 
+          v.name.includes("Samantha")
+        );
+        // If no premium voice is found, try to avoid the most robotic default ones if possible
+        if (!selectedVoice) {
+           selectedVoice = enVoices.find(v => v.name.includes("Microsoft Mark") || v.name.includes("Microsoft George")); 
+        }
+        if (!selectedVoice) selectedVoice = enVoices[0];
+      }
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+        console.log("Selected Voice:", selectedVoice.name);
+      }
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+  } catch (err) {
+    console.log("TTS error safely handled");
+  }
+}
+
 
 
 function renderSidebar() {
@@ -65,6 +147,14 @@ function loadChat(id) {
   if (container) container.innerHTML = "";
   messages.forEach((m, i) => appendMessage(m.role, m.text, { index: i, isWelcome: i === 0 && m.role === "ai" }));
   renderSidebar();
+
+  // Mobile usability: Close sidebar after loading a chat
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  if (window.innerWidth <= 768 && sidebar && overlay) {
+    sidebar.classList.remove("active");
+    overlay.classList.remove("active");
+  }
 }
 
 function safeFormat(text) {
@@ -179,7 +269,6 @@ function appendMessage(role, text, options = {}) {
         isRetrying = true;
 
         // Step 1: Slice messages to remove both this AI reply and the corresponding user message
-        // This ensures sendMessage() adds the user message back at the SAME index.
         const userText = messages[targetIndex].text;
         messages = messages.slice(0, targetIndex);
 
@@ -199,6 +288,39 @@ function appendMessage(role, text, options = {}) {
         }
       };
       actionContainer.appendChild(retryBtn);
+
+      // Play Audio Button (Persistent on every message)
+      const playBtn = document.createElement("button");
+      playBtn.innerText = "🔊 Play";
+      playBtn.className = "retry-btn audio-play-btn";
+      playBtn.onclick = () => {
+        const audioData = msg.dataset.audio;
+        if (audioData && audioData !== "null" && audioData !== "undefined") {
+          try {
+            const binaryString = window.atob(audioData);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'audio/mp3' });
+            const audioUrl = URL.createObjectURL(blob);
+            
+            handlePlay(audioUrl);
+          } catch (e) {
+            console.log("Failed to parse base64 audio, using fallback");
+            handlePlay(null, text);
+          }
+        } else {
+          console.log("[TTS] No audio available for this message, using fallback.");
+          handlePlay(null, text);
+        }
+      };
+      actionContainer.appendChild(playBtn);
+      
+      if (options.audio) {
+        msg.dataset.audio = options.audio;
+      }
     }
     
     msg.after(actionContainer);
@@ -282,16 +404,25 @@ async function sendMessage() {
       })
     });
 
-    const data = await res.json();
-    console.log("Received response");
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error("Failed to parse API response as JSON:", parseErr);
+      throw new Error("Invalid API response format");
+    }
 
     // Remove thinking indicator
     typing.remove();
 
     // Push and then append to ensure correct index in data-index
     messages.push({ role: "ai", text: data.reply });
-    appendMessage("ai", data.reply);
+    appendMessage("ai", data.reply, { audio: data.audio });
     
+    if (data.audio) {
+       showToast("Audio response ready 🔊");
+    }
+
     // Performance: Limit history to last 50 messages
     if (messages.length > 50) {
       messages = messages.slice(-50);
@@ -514,13 +645,46 @@ document.addEventListener("DOMContentLoaded", () => {
       circle.classList.add("ripple");
 
       const rect = btn.getBoundingClientRect();
-      // Calculate center to make ripple start exactly where clicked
       circle.style.left = (e.clientX - rect.left) + "px";
       circle.style.top = (e.clientY - rect.top) + "px";
 
       btn.appendChild(circle);
-
       setTimeout(() => circle.remove(), 600);
     }
   });
+
+  // Removed obsolete TTS Toggle Initialization
 });
+
+/**
+ * Displays a non-intrusive notification to the user.
+ */
+function showToast(text) {
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.style = "position:fixed; bottom:120px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.8); color:white; padding:10px 20px; border-radius:30px; font-size:13px; z-index:10000; pointer-events:none; transition:0.3s; opacity:0;";
+    document.body.appendChild(toast);
+  }
+  toast.innerText = text;
+  toast.style.opacity = "1";
+  setTimeout(() => { toast.style.opacity = "0"; }, 3000);
+}
+
+// Add CSS for the audio button to match retry button
+const style = document.createElement('style');
+style.textContent = `
+  .audio-play-btn {
+    background: rgba(139, 92, 246, 0.15) !important;
+    border-color: rgba(139, 92, 246, 0.3) !important;
+    color: #a78bfa !important;
+    margin-left: 5px;
+  }
+  .audio-play-btn:hover {
+    background: rgba(139, 92, 246, 0.25) !important;
+    border-color: #8b5cf6 !important;
+    color: #fff !important;
+  }
+`;
+document.head.appendChild(style);
